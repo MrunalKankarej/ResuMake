@@ -1,0 +1,152 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>ResuMake</title>
+  <link rel="stylesheet" href="/static/style.css">
+</head>
+<body>
+  <div class="container">
+
+    <div class="header">
+      <h1>ResuMake</h1>
+      <p>Score your resume against any job description instantly</p>
+    </div>
+
+    <div class="input-section" id="inputSection">
+      <div class="input-box">
+        <label>Your Resume</label>
+        <textarea id="resumeText" placeholder="Paste your resume text here..."></textarea>
+      </div>
+      <div class="input-box">
+        <label>Job Description</label>
+        <textarea id="jobDescription" placeholder="Paste the job description here..."></textarea>
+      </div>
+      <button id="analyzeBtn">Generate Resume</button>
+    </div>
+
+    <div class="loading-section" id="loadingSection" style="display:none;">
+      <div class="spinner"></div>
+      <p id="loadingText">Reading your resume...</p>
+    </div>
+
+    
+    <div class="report-section" id="reportSection" style="display:none;">
+  
+    <div class="score-card">
+        <div class="score-circle" id="scoreCircle">
+            <span id="scoreNumber">0</span>
+        </div>
+        <p id="verdictText"></p>
+    </div>
+  
+    <div class="keywords-panel">
+        <div class="keywords-col">
+            <h3>✅ Keywords Found</h3>
+            <div id="keywordsFound"></div>
+        </div>
+        <div class="keywords-col">
+            <h3>❌ Keywords Missing</h3>
+            <div id="keywordsMissing"></div>
+        </div>
+    </div>
+
+    <div class="quickwins-panel">
+        <h3>⚡ Quick Wins</h3>
+        <ol id="quickWinsList"></ol>
+    </div>
+
+    <button id="restartBtn">Analyze Another Resume</button>
+
+    </div>
+
+</div>
+
+  <script>
+    const messages = [
+      "Reading your resume...",
+      "Matching keywords...",
+      "Scoring sections...",
+      "Building your report..."
+    ]
+
+    document.getElementById("analyzeBtn").addEventListener("click", async () => {
+        const resume = document.getElementById("resumeText").value
+        const jobDescription = document.getElementById("jobDescription").value
+        
+        if (!resume || !jobDescription) {
+        alert("Please fill in both fields!")
+        return
+    }
+    
+    document.getElementById("inputSection").style.display = "none"
+    document.getElementById("loadingSection").style.display = "block"
+
+    let i = 0
+    const interval = setInterval(() => {
+        i = (i + 1) % messages.length
+        document.getElementById("loadingText").textContent = messages[i]
+    }, 1500)
+
+    const response = await fetch("/analyze", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ resume, jobDescription })
+    })
+
+    const result = await response.json()
+      clearInterval(interval)
+
+      // Populate the report
+      document.getElementById("scoreNumber").textContent = result.overallScore
+      // Dynamic score color
+      const score = result.overallScore
+      const scoreCircle = document.getElementById("scoreCircle")
+      
+      if (score >= 80) {
+        scoreCircle.style.borderColor = "#4caf82"  // green
+        document.getElementById("scoreNumber").style.color = "#4caf82"
+      } else if (score >= 60) {
+        scoreCircle.style.borderColor = "#f0a500"  // amber
+        document.getElementById("scoreNumber").style.color = "#f0a500"
+      } else {
+        scoreCircle.style.borderColor = "#f47474"  // red
+        document.getElementById("scoreNumber").style.color = "#f47474"
+      }
+      document.getElementById("verdictText").textContent = result.verdict
+
+      // Keywords found
+      const foundDiv = document.getElementById("keywordsFound")
+      foundDiv.innerHTML = result.keywordsFound.map(k => 
+        `<span class="chip green">${k}</span>`
+      ).join("")
+
+      // Keywords missing
+      const missingDiv = document.getElementById("keywordsMissing")
+      missingDiv.innerHTML = result.keywordsMissing.map(k => 
+        `<span class="chip red">${k}</span>`
+      ).join("")
+
+      // Quick wins
+      const winsList = document.getElementById("quickWinsList")
+      winsList.innerHTML = result.quickWins.map(w => 
+        `<li>${w}</li>`
+      ).join("")
+
+      // Show report
+      document.getElementById("loadingSection").style.display = "none"
+      document.getElementById("reportSection").style.display = "block"
+
+      // Restart button
+      document.getElementById("restartBtn").addEventListener("click", () => {
+        document.getElementById("reportSection").style.display = "none"
+        document.getElementById("inputSection").style.display = "block"
+        document.getElementById("resumeText").value = ""
+        document.getElementById("jobDescription").value = ""
+      })
+    })
+
+</script>
+</body>
+</html>
